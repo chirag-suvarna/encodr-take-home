@@ -1,3 +1,5 @@
+import { withAuth } from "@/lib/server/http";
+
 export const dynamic = "force-dynamic";
 
 /**
@@ -11,6 +13,8 @@ export const dynamic = "force-dynamic";
  * Auth: native EventSource can't set an Authorization header — decide how you'll authenticate this
  * endpoint and make it consistent with your client.
  */
-export async function GET(_req: Request, _ctx: { params: Promise<{ id: string }> }) {
-  return new Response("Not implemented: GET /api/runs/[id]/events", { status: 501 });
+export async function GET(req: Request, _ctx: { params: Promise<{ id: string }> }) {
+  return withAuth(req, async () => {
+    return new Response("Not implemented: GET /api/runs/[id]/events", { status: 501 });
+  });
 }

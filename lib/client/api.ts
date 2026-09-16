@@ -1,4 +1,9 @@
-import { getAccessToken } from "@/lib/client/token-store";
+import {
+  clearTokens,
+  getAccessToken,
+  getRefreshToken,
+  setTokens,
+} from "@/lib/client/token-store";
 
 export class ApiError extends Error {
   status: number;
@@ -37,7 +42,48 @@ interface RequestOptions {
   signal?: AbortSignal;
 }
 
-async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
+/** Concurrent 401s share this single in-flight refresh instead of a stampede. */
+let refreshInFlight: Promise<boolean> | null = null;
+
+function isAuthPath(path: string) {
+  return path.startsWith("/api/auth/");
+}
+
+function forceLogout() {
+  clearTokens();
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_LOGOUT_EVENT));
+  }
+}
+
+async function refreshAccessToken(): Promise<boolean> {
+  if (refreshInFlight) return refreshInFlight;
+
+  refreshInFlight = (async () => {
+    const refreshToken = getRefreshToken();
+    if (!refreshToken) return false;
+    try {
+      const res = await fetch("/api/auth/refresh", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ refreshToken }),
+      });
+      if (!res.ok) return false;
+      const data = (await res.json()) as { accessToken?: string };
+      if (!data.accessToken) return false;
+      setTokens({ accessToken: data.accessToken });
+      return true;
+    } catch {
+      return false;
+    }
+  })().finally(() => {
+    refreshInFlight = null;
+  });
+
+  return refreshInFlight;
+}
+
+async function request<T>(path: string, options: RequestOptions = {}, isRetry = false): Promise<T> {
   const headers: Record<string, string> = {};
   const access = getAccessToken();
   if (access) headers["authorization"] = `Bearer ${access}`;
@@ -50,10 +96,12 @@ async function request<T>(path: string, options: RequestOptions = {}): Promise<T
     signal: options.signal,
   });
 
-  // TODO(candidate): handle 401 here — attempt ONE silent refresh (POST /api/auth/refresh) and
-  // retry the original request once. If the refresh fails, clear tokens and dispatch
-  // AUTH_LOGOUT_EVENT so the app can route back to /signin.
-  // Bonus: make sure several requests that 401 at the same time share ONE refresh, not N.
+  if (res.status === 401 && !isRetry && !isAuthPath(path)) {
+    const refreshed = await refreshAccessToken();
+    if (refreshed) return request<T>(path, options, true);
+    forceLogout();
+    throw await parseError(res);
+  }
 
   if (!res.ok) throw await parseError(res);
   if (res.status === 204) return undefined as T;
