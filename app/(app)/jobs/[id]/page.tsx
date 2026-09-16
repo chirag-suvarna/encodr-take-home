@@ -8,9 +8,28 @@ import { ProgressBar } from "@/components/progress-bar";
 import { StatusBadge } from "@/components/status-badge";
 import { jobKeys, useJob, useRun, useStartRun } from "@/lib/client/hooks";
 import { useRunStream } from "@/lib/client/use-run-stream";
-import type { EncodeResult, Stage } from "@/lib/types";
+import { STAGE_END_PCT, type EncodeResult, type Stage } from "@/lib/types";
 
-const PIPELINE: Stage[] = ["QUEUED", "DOWNLOADING", "PROBING", "TRANSCODING", "PACKAGING", "COMPLETED"];
+const PIPELINE = ["QUEUED", "DOWNLOADING", "PROBING", "TRANSCODING", "PACKAGING", "COMPLETED"] as const;
+
+type PipelineStage = (typeof PIPELINE)[number];
+
+function pipelineVisual(
+  stage: PipelineStage,
+  liveStage: Stage | null,
+  pct: number,
+  encodeFailed: boolean,
+): "complete" | "current" | "failed" | "idle" {
+  if (encodeFailed || liveStage === "FAILED") {
+    if (stage === "PROBING") return "failed";
+    if (stage === "QUEUED" || stage === "DOWNLOADING") return "complete";
+    return "idle";
+  }
+  if (liveStage === "COMPLETED" || pct >= 100) return "complete";
+  if (stage === liveStage) return "current";
+  if (pct >= STAGE_END_PCT[stage]) return "complete";
+  return "idle";
+}
 
 function sourceInfo(sourceUrl: string) {
   try {
@@ -168,8 +187,6 @@ function RunPanel({
   const encoding = !stream.done && liveStage !== "FAILED" && !stream.connectionError;
   const errorText = stream.error ?? runQuery.data?.error;
   const result = runQuery.data?.result;
-  const activeIndex = liveStage ? PIPELINE.indexOf(liveStage) : -1;
-
   return (
     <section className="space-y-4 fade-up fade-up-delay-2">
       <div className="surface rounded-[28px] p-5 sm:p-6">
@@ -195,14 +212,12 @@ function RunPanel({
 
         <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-6">
           {PIPELINE.map((stage, index) => {
-            const isCurrent = stage === liveStage;
-            const complete = activeIndex > index || liveStage === "COMPLETED";
-            const failed = stage === "FAILED" || (encodeFailed && isCurrent);
+            const visual = pipelineVisual(stage, liveStage, stream.progressPct, encodeFailed);
             return (
               <div key={stage} className="relative">
-                <div className={`rounded-2xl border px-2 py-3 text-center transition ${failed ? "border-rose-400/25 bg-rose-500/10" : isCurrent ? "border-indigo-400/30 bg-indigo-500/10" : complete ? "border-emerald-400/25 bg-emerald-500/10" : "border-[var(--line)] bg-[var(--fill)]"}`}>
-                  <div className={`mx-auto mb-2 grid size-6 place-items-center rounded-full text-[10px] font-bold ${failed ? "bg-rose-500/15 text-rose-700 dark:text-rose-200" : isCurrent ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-200" : complete ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-200" : "bg-[var(--fill-strong)] faint"}`}>
-                    {failed ? "!" : complete ? "✓" : index + 1}
+                <div className={`rounded-2xl border px-2 py-3 text-center ${visual === "failed" ? "border-rose-400/25 bg-rose-500/10" : visual === "current" ? "border-indigo-400/30 bg-indigo-500/10" : visual === "complete" ? "border-emerald-400/25 bg-emerald-500/10" : "border-[var(--line)] bg-[var(--fill)]"}`}>
+                  <div className={`mx-auto mb-2 grid size-6 place-items-center rounded-full text-[10px] font-bold ${visual === "failed" ? "bg-rose-500/15 text-rose-700 dark:text-rose-200" : visual === "current" ? "bg-indigo-500/15 text-indigo-700 dark:text-indigo-200" : visual === "complete" ? "bg-emerald-500/15 text-emerald-700 dark:text-emerald-200" : "bg-[var(--fill-strong)] faint"}`}>
+                    {visual === "failed" ? "!" : visual === "complete" ? "✓" : index + 1}
                   </div>
                   <p className="truncate text-[9px] font-semibold uppercase tracking-[0.08em] muted">{stage}</p>
                 </div>

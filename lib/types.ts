@@ -23,6 +23,16 @@ export const ACTIVE_STAGES: Stage[] = [
 
 export const TERMINAL_STAGES: Stage[] = ["COMPLETED", "FAILED"];
 
+/** Progress % at which each pipeline stage is done — keep in sync with computeRun windows. */
+export const STAGE_END_PCT: Record<Exclude<Stage, "FAILED">, number> = {
+  QUEUED: 5,
+  DOWNLOADING: 25,
+  PROBING: 40,
+  TRANSCODING: 85,
+  PACKAGING: 99,
+  COMPLETED: 100,
+};
+
 export function isTerminalStage(stage: Stage): boolean {
   return TERMINAL_STAGES.includes(stage);
 }

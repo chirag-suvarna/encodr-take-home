@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 function parseSource(sourceUrl: string) {
   try {
@@ -26,17 +26,14 @@ export function MediaPreview({
   const [failed, setFailed] = useState(false);
   const meta = parseSource(sourceUrl);
 
-  async function handleEnter() {
-    setHovered(true);
+  useEffect(() => {
     const video = videoRef.current;
-    if (!video || failed) return;
-    video.preload = "metadata";
-    video.load();
-    try {
-      await video.play();
-    } catch {
-      // Autoplay can be unavailable for a remote source; the preview still remains useful.
-    }
+    if (!hovered || failed || !video) return;
+    void video.play().catch(() => undefined);
+  }, [hovered, failed]);
+
+  function handleEnter() {
+    setHovered(true);
   }
 
   function handleLeave() {
@@ -62,18 +59,16 @@ export function MediaPreview({
       onFocus={() => void handleEnter()}
       onBlur={handleLeave}
     >
-      {!failed && (
+      {hovered && !failed && (
         <video
           ref={videoRef}
           src={sourceUrl}
           muted
           playsInline
           loop
-          preload="none"
+          preload="metadata"
           onError={() => setFailed(true)}
-          className={`absolute inset-0 h-full w-full object-cover transition duration-500 ${
-            hovered ? "scale-105 opacity-95" : "scale-100 opacity-72"
-          }`}
+          className="absolute inset-0 h-full w-full scale-105 object-cover opacity-95"
           aria-label={`Preview of ${meta.fileName}`}
         />
       )}

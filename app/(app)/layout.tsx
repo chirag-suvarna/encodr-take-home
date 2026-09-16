@@ -26,7 +26,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="app-shell min-h-screen">
       <div className="mx-auto min-h-screen max-w-6xl px-4 py-5 sm:px-6 lg:px-8">
-        <header className="surface sticky top-4 z-40 mb-10 flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4">
+        <header className="surface surface-glass sticky top-4 z-40 mb-10 flex items-center justify-between rounded-2xl px-3 py-2.5 sm:px-4">
           <Brand />
 
           <div className="flex items-center gap-2 sm:gap-3">

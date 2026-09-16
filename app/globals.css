@@ -115,7 +115,10 @@ select:focus-visible {
   background: var(--panel);
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
-  backdrop-filter: blur(18px);
+}
+
+.surface-glass {
+  backdrop-filter: blur(16px);
 }
 
 .surface-hover:hover {

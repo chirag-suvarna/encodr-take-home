@@ -13,15 +13,13 @@ export function ProgressBar({ value, failed }: { value: number; failed?: boolean
     >
       <div
         className={clsx(
-          "relative h-full overflow-hidden rounded-full transition-[width] duration-500 ease-out",
+          "h-full w-full origin-left rounded-full",
           failed
             ? "bg-[linear-gradient(90deg,#fb7185,#ef4444)]"
             : "bg-[linear-gradient(90deg,var(--accent),var(--accent-2))]",
         )}
-        style={{ width: `${pct}%` }}
-      >
-        {!failed && <span className="absolute inset-0 animate-[shimmer_1.8s_linear_infinite] bg-[linear-gradient(110deg,transparent,rgba(255,255,255,.3),transparent)] bg-[length:200%_100%]" />}
-      </div>
+        style={{ transform: `scaleX(${pct / 100})` }}
+      />
     </div>
   );
 }
