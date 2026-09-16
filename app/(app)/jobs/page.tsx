@@ -51,8 +51,11 @@ export default function JobsPage() {
         <h1 className="mb-4 text-xl font-semibold">New encode job</h1>
         <form onSubmit={onSubmit} className="space-y-3" noValidate>
           <div>
-            <label className="mb-1 block text-sm font-medium">Source URL</label>
+            <label htmlFor="sourceUrl" className="mb-1 block text-sm font-medium">
+              Source URL
+            </label>
             <input
+              id="sourceUrl"
               {...register("sourceUrl")}
               type="text"
               inputMode="url"
@@ -64,8 +67,11 @@ export default function JobsPage() {
             )}
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium">Title (optional)</label>
+            <label htmlFor="title" className="mb-1 block text-sm font-medium">
+              Title (optional)
+            </label>
             <input
+              id="title"
               {...register("title")}
               type="text"
               maxLength={80}
@@ -101,20 +107,34 @@ export default function JobsPage() {
         )}
         {jobs.data && jobs.data.length > 0 && (
           <ul className="divide-y divide-neutral-200 rounded-md border border-neutral-200">
-            {jobs.data.map((job) => (
-              <li key={job.id}>
-                <Link
-                  href={`/jobs/${job.id}`}
-                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50"
-                >
+            {jobs.data.map((job) => {
+              const pending = job.id.startsWith("optimistic-");
+              const row = (
+                <>
                   <div className="min-w-0">
                     <p className="truncate font-medium">{job.title}</p>
                     <p className="truncate text-xs text-neutral-500">{job.sourceUrl}</p>
                   </div>
                   <StatusBadge value={job.status} />
-                </Link>
-              </li>
-            ))}
+                </>
+              );
+              return (
+                <li key={job.id}>
+                  {pending ? (
+                    <div className="flex items-center justify-between gap-3 px-4 py-3 opacity-70">
+                      {row}
+                    </div>
+                  ) : (
+                    <Link
+                      href={`/jobs/${job.id}`}
+                      className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50"
+                    >
+                      {row}
+                    </Link>
+                  )}
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>

@@ -19,11 +19,14 @@ npm run dev        # http://localhost:3000
 ```bash
 npm run typecheck  # tsc --noEmit
 npm run test:run   # Vitest + Testing Library
+npx playwright install chromium
+npm run test:e2e   # Playwright happy path + fail/retry
 npm run build      # production build
 ```
 
-Tests live in `__tests__/`. They cover login/tokens, job CRUD + URL validation, `computeRun` stages
-and the fail URL, run APIs, SSE terminal/cleanup, silent refresh, and the create-job form (RTL).
+Unit tests live in `__tests__/`. They cover login/tokens, job CRUD + URL validation, `computeRun`
+stages and the fail URL, run APIs, SSE terminal/cleanup, silent refresh, and the create-job form (RTL).
+E2E specs in `e2e/` walk the reviewer journey (complete encode + corrupt URL retry).
 
 ## Demo credentials
 
@@ -90,6 +93,11 @@ The route is wrapped in `withAuth`. `useRunStream` aborts on unmount / `runId` c
 sends `Last-Event-ID`; the server immediately emits the **current** `computeRun(now)` snapshot (state
 is time-derived, not a replay log). Unmount and terminal COMPLETED/FAILED set `cancelled` and abort —
 those do **not** reconnect.
+
+**Optimistic create (stretch):** `useCreateJob` inserts a temp `optimistic-*` row immediately, replaces
+it with the server `Job` on success, rolls the cache back on error, then still invalidates the list.
+
+**Playwright (stretch):** `npm run test:e2e` covers the reviewer happy path and the corrupt-URL retry.
 
 **Not used as the primary path**
 
