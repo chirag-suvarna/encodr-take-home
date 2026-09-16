@@ -35,6 +35,7 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
     }
 
     const ac = new AbortController();
+    let cancelled = false;
     let settled = false;
     setState({ ...initialState });
 
@@ -47,11 +48,12 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
       signal: ac.signal,
       openWhenHidden: true,
       async onopen(res) {
+        if (cancelled) return;
         if (!res.ok) throw new Error(`SSE ${res.status}`);
         setState((s) => ({ ...s, connected: true }));
       },
       onmessage(ev) {
-        if (!ev.data) return;
+        if (cancelled || !ev.data) return;
         const data = JSON.parse(ev.data) as RunEvent;
         const done = isTerminalStage(data.stage);
         setState((s) => ({
@@ -76,6 +78,7 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
     });
 
     return () => {
+      cancelled = true;
       ac.abort();
     };
   }, [runId]);

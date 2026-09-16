@@ -90,7 +90,7 @@ export default function JobsPage() {
         {jobs.isLoading && <p className="text-sm text-neutral-500">Loading jobs…</p>}
         {jobs.isError && (
           <div className="text-sm text-red-600">
-            Couldn’t load jobs (is GET /api/jobs implemented?).{" "}
+            Couldn’t load jobs.{" "}
             <button onClick={() => jobs.refetch()} className="underline">
               Retry
             </button>
@@ -99,22 +99,24 @@ export default function JobsPage() {
         {jobs.data?.length === 0 && (
           <p className="text-sm text-neutral-500">No jobs yet.</p>
         )}
-        <ul className="divide-y divide-neutral-200 rounded-md border border-neutral-200">
-          {jobs.data?.map((job) => (
-            <li key={job.id}>
-              <Link
-                href={`/jobs/${job.id}`}
-                className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50"
-              >
-                <div className="min-w-0">
-                  <p className="truncate font-medium">{job.title}</p>
-                  <p className="truncate text-xs text-neutral-500">{job.sourceUrl}</p>
-                </div>
-                <StatusBadge value={job.status} />
-              </Link>
-            </li>
-          ))}
-        </ul>
+        {jobs.data && jobs.data.length > 0 && (
+          <ul className="divide-y divide-neutral-200 rounded-md border border-neutral-200">
+            {jobs.data.map((job) => (
+              <li key={job.id}>
+                <Link
+                  href={`/jobs/${job.id}`}
+                  className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-neutral-50"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate font-medium">{job.title}</p>
+                    <p className="truncate text-xs text-neutral-500">{job.sourceUrl}</p>
+                  </div>
+                  <StatusBadge value={job.status} />
+                </Link>
+              </li>
+            ))}
+          </ul>
+        )}
       </section>
     </div>
   );

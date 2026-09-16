@@ -1,60 +1,53 @@
 # Encodr — Fullstack Take-Home
 
-Thanks for taking the time! This is a small **media transcoding dashboard**. You'll build a flow where
-a signed-in user creates an encode **job** from a media URL, starts a **transcode run**, watches its
-**progress stream in live**, and sees the **output renditions** when it finishes.
+A small **media transcoding dashboard**: sign in, create an encode **job** from a media URL, start a
+**run**, watch **live SSE progress**, and see **output renditions** (or a clear failure).
 
-The full brief — requirements, the API contract, and what we look for — is in **`BRIEF.md`** in this
-repo. Read it first; this README only covers running the scaffold.
+The brief is in **`BRIEF.md`**.
 
 ## Run it
 
 ```bash
 npm install
 npm run dev        # http://localhost:3000
-npm run test:run   # tests (one example test is included and passes)
-npm run typecheck  # tsc --noEmit
-npm run build      # production build
+npm run test:run
+npm run typecheck
+npm run build
 ```
 
 Requires **Node 20+**. **Demo login:** `demo@encodr.dev` / `password123`.
 
-On a fresh checkout the app runs but most features are stubbed — the API routes return `501` and the
-client logic is unimplemented. That's expected: your job is to fill in the `TODO(candidate)` markers.
+Use `https://cdn.example.com/videos/corrupt.mp4` as a source URL to exercise the fail path
+(`QUEUED → DOWNLOADING → PROBING → FAILED` at ~12s).
 
-## What's provided vs. what you build
+## Design decisions
 
-**Provided (so you don't fight setup):**
-- Next.js (App Router) + TypeScript (strict) + Tailwind, configured and running.
-- TanStack Query, React Hook Form + Zod, `@microsoft/fetch-event-source` installed.
-- The **API contract** as shared types (`lib/types.ts`) and the schema file (`lib/schemas.ts`).
-- The app shell + auth-aware layout, a working sign-in page, token storage plumbing
-  (`lib/client/token-store.ts`), HTTP helpers (`lib/server/http.ts`), and a couple of UI components.
-- Worked examples of the React Query pattern (`useJobs`, `useJob`).
+### SSE auth — Bearer via `@microsoft/fetch-event-source`
 
-**You implement (look for `TODO(candidate)`):**
-- `lib/server/auth.ts` — issue/verify tokens (short-lived access + refresh).
-- `app/api/**` — the Route Handlers (auth, jobs, runs, and the **SSE** progress stream).
-- `lib/server/store.ts` — `computeRun()`: the encode run's stage/progress state machine.
-- `lib/client/api.ts` — 401 → silent refresh + single retry.
-- `lib/client/auth-context.tsx` — `login()`.
-- `lib/client/use-run-stream.ts` — the SSE subscription hook (with cleanup).
-- `lib/client/hooks.ts` — create-job / start-run mutations.
-- `lib/schemas.ts` — real source-URL validation.
-- The **job list + create form** and the **job detail** screen (run controls, live progress, results).
+Native `EventSource` cannot set an `Authorization` header. The stream is opened with
+`@microsoft/fetch-event-source` (already in the scaffold) and the same header as every other API
+call:
 
-Use `https://cdn.example.com/videos/corrupt.mp4` as a source URL — your run state machine should make
-that one **fail** partway, so you can build (and we can see) the error/retry path.
+```
+Authorization: Bearer <accessToken>
+```
 
-## Notes & ground rules
+`GET /api/runs/:id/events` is wrapped in `withAuth`. The client hook (`lib/client/use-run-stream.ts`)
+passes the access token and aborts the request on unmount so the server timer is cleared.
 
-- State can live **in-memory** (a module-level `Map`) — no database needed. Restarting the dev server
-  wiping data is fine.
-- Keep the access-token TTL short (~60s) so your refresh path is actually exercised.
-- AI tools are allowed, but you own every line — there's a follow-up interview where you'll explain and
-  extend your own code.
-- If something's ambiguous, make a reasonable call, note it here, and move on.
+**Why not a query token as the primary path?** Tokens in URLs leak through logs, proxies, and history.
+**Why not cookies?** This app stores tokens in memory + `localStorage` and has no cookie/CSRF setup;
+a cookie-only SSE path would be a second auth mechanism.
 
-When you're done, please update this README with: anything you assumed, key design decisions
-(especially how you authenticated the SSE stream and how the refresh/retry works), and what you'd do
-next with more time.
+The server also accepts `?access_token=` as a fallback for `curl` / debugging. The browser app never
+puts the token in the query string.
+
+### Silent refresh
+
+Access tokens live **~60s**. On `401`, `lib/client/api.ts` POSTs `/api/auth/refresh` once and retries
+the original request. Concurrent 401s share a **single** in-flight refresh. If refresh fails, tokens
+are cleared and `encodr:logout` sends the user to `/signin`. Login/refresh 401s do not recurse.
+
+## Still to build
+
+- Job detail screen: start/retry, live progress + log (`useRunStream`), FAILED + results table.

@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener(AUTH_LOGOUT_EVENT, handler);
   }, [logout]);
 
+  // Sign-in page calls this, then routes to /jobs once `user` is set.
   const login = useCallback(async (email: string, password: string) => {
     const data = await api.post<{
       accessToken: string;

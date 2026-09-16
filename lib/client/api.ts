@@ -96,6 +96,7 @@ async function request<T>(path: string, options: RequestOptions = {}, isRetry = 
     signal: options.signal,
   });
 
+  // 401 → one shared refresh → retry this request once. Never loops: isRetry skips this branch.
   if (res.status === 401 && !isRetry && !isAuthPath(path)) {
     const refreshed = await refreshAccessToken();
     if (refreshed) return request<T>(path, options, true);
