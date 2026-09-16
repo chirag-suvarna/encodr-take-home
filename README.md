@@ -89,10 +89,10 @@ Authorization: Bearer <accessToken>
 The route is wrapped in `withAuth`. `useRunStream` aborts on unmount / `runId` change so the server
 `setInterval` is cleared (`req.signal` + stream `cancel`).
 
-**Reconnect / resume (stretch):** each SSE frame has an `id`. A network blip retries after 1s and
-sends `Last-Event-ID`; the server immediately emits the **current** `computeRun(now)` snapshot (state
-is time-derived, not a replay log). Unmount and terminal COMPLETED/FAILED set `cancelled` and abort —
-those do **not** reconnect.
+**Reconnect / resume (stretch):** each SSE frame has an `id`. A network blip retries with exponential
+backoff (max 5 attempts) and `Last-Event-ID`; the server emits the current `computeRun(now)` snapshot.
+`COMPLETED` / `FAILED` (encoder) and SSE 404 (run gone) **stop**. Unmount aborts. Transport
+**Reconnect** is the same run; encode **Retry** creates a new run — they are not mixed.
 
 **Optimistic create (stretch):** `useCreateJob` inserts a temp `optimistic-*` row immediately, replaces
 it with the server `Job` on success, rolls the cache back on error, then still invalidates the list.

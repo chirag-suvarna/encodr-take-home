@@ -7,7 +7,7 @@ vi.mock("@microsoft/fetch-event-source", () => ({
   fetchEventSource,
 }));
 
-import { useRunStream } from "@/lib/client/use-run-stream";
+import { MAX_RECONNECT_ATTEMPTS, useRunStream } from "@/lib/client/use-run-stream";
 
 afterEach(() => {
   fetchEventSource.mockReset();
@@ -92,10 +92,28 @@ describe("useRunStream", () => {
 
     const { unmount } = renderHook(() => useRunStream("r1"));
     expect(onerrors[0]?.(new Error("blip"))).toBe(1000);
+    expect(onerrors[0]?.(new Error("blip"))).toBe(2000);
     expect(signals[0]?.aborted).toBe(false);
 
     unmount();
     expect(signals[0]?.aborted).toBe(true);
     expect(() => onerrors[0]?.(new Error("blip"))).toThrow();
+  });
+
+  it("stops after the reconnect ceiling", () => {
+    let onerror: ((err: unknown) => unknown) | undefined;
+    fetchEventSource.mockImplementation((_url: string, init: { onerror: (err: unknown) => unknown }) => {
+      onerror = init.onerror;
+      return new Promise(() => undefined);
+    });
+
+    const { result } = renderHook(() => useRunStream("r1"));
+    for (let i = 0; i < MAX_RECONNECT_ATTEMPTS; i++) {
+      expect(onerror?.(new Error("blip"))).toEqual(expect.any(Number));
+    }
+    act(() => {
+      expect(() => onerror?.(new Error("blip"))).toThrow();
+    });
+    expect(result.current.connectionError).toBe("Connection unavailable");
   });
 });

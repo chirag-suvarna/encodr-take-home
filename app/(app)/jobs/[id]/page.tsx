@@ -100,8 +100,8 @@ function RunPanel({
   const runQuery = useRun(runId, snapshotReady);
 
   const liveStage = stream.stage;
-  const failed = liveStage === "FAILED" || (stream.done && jobStatus === "FAILED");
-  const encoding = !stream.done && liveStage !== "FAILED";
+  const encodeFailed = liveStage === "FAILED" || (stream.done && jobStatus === "FAILED");
+  const encoding = !stream.done && liveStage !== "FAILED" && !stream.connectionError;
   const errorText = stream.error ?? runQuery.data?.error;
   const result = runQuery.data?.result;
 
@@ -118,7 +118,7 @@ function RunPanel({
           </div>
           <span className="text-sm tabular-nums text-neutral-600">{stream.progressPct}%</span>
         </div>
-        <ProgressBar value={stream.progressPct} failed={failed} />
+        <ProgressBar value={stream.progressPct} failed={encodeFailed} />
 
         {stream.log.length > 0 && (
           <pre className="max-h-56 overflow-auto rounded-md bg-neutral-950 px-3 py-2 font-mono text-xs leading-6 text-neutral-100">
@@ -127,7 +127,21 @@ function RunPanel({
         )}
       </section>
 
-      {errorText && !encoding && (
+      {stream.connectionError && (
+        <div className="space-y-3 rounded-md border border-neutral-300 bg-neutral-50 px-4 py-3 text-sm text-neutral-700">
+          <p>{stream.connectionError}</p>
+          <p className="text-xs text-neutral-500">Reconnects the same run. This is not an encode retry.</p>
+          <button
+            type="button"
+            onClick={stream.reconnect}
+            className="rounded-md bg-neutral-800 px-3 py-1.5 text-xs font-medium text-white hover:bg-neutral-700"
+          >
+            Reconnect
+          </button>
+        </div>
+      )}
+
+      {errorText && encodeFailed && !encoding && (
         <div className="space-y-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <p>{errorText}</p>
           <p className="text-xs text-red-600/80">This run failed. Retry starts a new run; the failed one is unchanged.</p>
