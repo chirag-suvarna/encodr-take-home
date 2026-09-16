@@ -6,7 +6,6 @@ export const metadata: Metadata = {
   title: "Encodr — Media Encoding Workspace",
   description: "Submit media, monitor live encoding progress, and review ready-to-ship renditions.",
   applicationName: "Encodr",
-  metadataBase: new URL("http://localhost:3000"),
   keywords: ["media encoding", "transcoding", "video", "SSE", "encode jobs"],
   icons: {
     icon: "/encodr-icon.svg",
@@ -34,7 +33,7 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{<Providers>{children}</Providers>}</body>
+      <body><Providers>{children}</Providers></body>
     </html>
   );
 }
