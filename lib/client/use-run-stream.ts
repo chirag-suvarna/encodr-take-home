@@ -79,7 +79,9 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
         }
       },
       onerror(err) {
-        // Unmount / terminal abort is intentional — do not reconnect (leaks).
+        // RECONNECT: transport blip while RUNNING → return delay (not a while(true) loop).
+        // STOP:     COMPLETED/FAILED set cancelled and abort → throw, no retry.
+        // ABORT:    unmount / runId change → throw, no retry (no zombie streams).
         if (cancelled || ac.signal.aborted) throw err;
         setState((s) => ({ ...s, connected: false }));
         return 1000;

@@ -48,6 +48,38 @@ describe("useRunStream", () => {
     }).not.toThrow();
   });
 
+  it("stops reconnecting after a terminal COMPLETED event", () => {
+    const signals: AbortSignal[] = [];
+    let onmessage: ((ev: { id?: string; data: string }) => void) | undefined;
+    let onerror: ((err: unknown) => unknown) | undefined;
+
+    fetchEventSource.mockImplementation(
+      (
+        _url: string,
+        init: {
+          signal: AbortSignal;
+          onmessage: (ev: { id?: string; data: string }) => void;
+          onerror: (err: unknown) => unknown;
+        },
+      ) => {
+        signals.push(init.signal);
+        onmessage = init.onmessage;
+        onerror = init.onerror;
+        return new Promise(() => undefined);
+      },
+    );
+
+    renderHook(() => useRunStream("r1"));
+    act(() => {
+      onmessage?.({
+        id: "1",
+        data: JSON.stringify({ stage: "COMPLETED", progressPct: 100, message: "Encode finished" }),
+      });
+    });
+    expect(signals[0]?.aborted).toBe(true);
+    expect(() => onerror?.(new Error("blip"))).toThrow();
+  });
+
   it("retries on a transport blip while mounted, but not after unmount", () => {
     const signals: AbortSignal[] = [];
     const onerrors: Array<(err: unknown) => unknown> = [];
