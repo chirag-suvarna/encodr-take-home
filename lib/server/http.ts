@@ -1,3 +1,4 @@
+import { z } from "zod";
 import { getUserIdFromRequest } from "@/lib/server/auth";
 
 export function json(data: unknown, init?: number | ResponseInit): Response {
@@ -10,6 +11,19 @@ export function json(data: unknown, init?: number | ResponseInit): Response {
 
 export function error(status: number, detail: string): Response {
   return json({ detail }, status);
+}
+
+export function fieldErrorsFromZod(zodError: z.ZodError): Record<string, string[]> {
+  const fieldErrors: Record<string, string[]> = {};
+  for (const issue of zodError.issues) {
+    const key = String(issue.path[0] ?? "_root");
+    (fieldErrors[key] ??= []).push(issue.message);
+  }
+  return fieldErrors;
+}
+
+export function unprocessable(zodError: z.ZodError): Response {
+  return json({ fieldErrors: fieldErrorsFromZod(zodError) }, 422);
 }
 
 /** Returns the authenticated userId, or throws a Response (401) to be caught by the handler. */

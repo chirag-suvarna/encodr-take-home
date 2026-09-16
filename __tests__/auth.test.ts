@@ -9,6 +9,7 @@ import {
   verifyAccessToken,
   verifyRefreshToken,
 } from "@/lib/server/auth";
+import { resetStore } from "@/lib/server/store";
 
 function jsonRequest(url: string, body: unknown) {
   return new Request(url, {
@@ -131,7 +132,8 @@ describe("POST /api/auth/refresh", () => {
 });
 
 describe("protected routes", () => {
-  it("returns 401 without a token and 501 with a valid one (handler still stubbed)", async () => {
+  it("returns 401 without a token and 200 with a valid one", async () => {
+    resetStore();
     const unauth = await listJobs(new Request("http://localhost/api/jobs"));
     expect(unauth.status).toBe(401);
 
@@ -139,6 +141,7 @@ describe("protected routes", () => {
     const authd = await listJobs(
       new Request("http://localhost/api/jobs", { headers: { authorization: `Bearer ${access}` } }),
     );
-    expect(authd.status).toBe(501);
+    expect(authd.status).toBe(200);
+    expect(await authd.json()).toEqual([]);
   });
 });

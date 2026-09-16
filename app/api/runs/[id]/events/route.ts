@@ -1,20 +1,75 @@
-import { withAuth } from "@/lib/server/http";
+import { isTerminalStage } from "@/lib/types";
+import { error, withAuth } from "@/lib/server/http";
+import { getRun, getRunRecord, toRunEvent } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
 
-/**
- * TODO(candidate): the live progress stream — the core of this exercise.
- *
- * Return a Server-Sent Events stream (Content-Type: text/event-stream) that pushes the run's
- * progress as it advances, e.g.  data: {"stage":"TRANSCODING","progressPct":62,"message":"…"}\n\n
- * Close the stream once the run reaches a terminal stage (COMPLETED / FAILED), and clean up your
- * timer if the client disconnects (`req.signal`).
- *
- * Auth: native EventSource can't set an Authorization header — decide how you'll authenticate this
- * endpoint and make it consistent with your client.
- */
-export async function GET(req: Request, _ctx: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return withAuth(req, async () => {
-    return new Response("Not implemented: GET /api/runs/[id]/events", { status: 501 });
+    const { id } = await ctx.params;
+    if (!getRunRecord(id)) return error(404, "Run not found");
+
+    const encoder = new TextEncoder();
+    let timer: ReturnType<typeof setInterval> | undefined;
+    let last = "";
+    let stopped = false;
+
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        const stop = () => {
+          if (stopped) return;
+          stopped = true;
+          if (timer !== undefined) {
+            clearInterval(timer);
+            timer = undefined;
+          }
+          try {
+            controller.close();
+          } catch {
+            /* already closed */
+          }
+        };
+
+        const tick = () => {
+          if (stopped) return;
+          const run = getRun(id);
+          if (!run) {
+            stop();
+            return;
+          }
+          const payload = JSON.stringify(toRunEvent(run));
+          if (payload !== last) {
+            last = payload;
+            try {
+              controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+            } catch {
+              stop();
+              return;
+            }
+          }
+          if (isTerminalStage(run.stage)) stop();
+        };
+
+        tick();
+        if (!stopped) timer = setInterval(tick, 250);
+        req.signal.addEventListener("abort", stop, { once: true });
+      },
+      cancel() {
+        stopped = true;
+        if (timer !== undefined) {
+          clearInterval(timer);
+          timer = undefined;
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "content-type": "text/event-stream; charset=utf-8",
+        "cache-control": "no-cache, no-transform",
+        connection: "keep-alive",
+        "x-accel-buffering": "no",
+      },
+    });
   });
 }
