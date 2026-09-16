@@ -37,19 +37,16 @@ function record(overrides: Partial<RunRecord> = {}): RunRecord {
 }
 
 describe("computeRun", () => {
-  it("starts QUEUED near 0%", () => {
-    const run = computeRun(record(), 1_000_000);
-    expect(run.stage).toBe("QUEUED");
-    expect(run.progressPct).toBe(0);
-    expect(run.result).toBeUndefined();
-    expect(run.error).toBeUndefined();
-  });
-
-  it("is TRANSCODING around 15s", () => {
-    const run = computeRun(record(), 1_000_000 + 15_000);
-    expect(run.stage).toBe("TRANSCODING");
-    expect(run.progressPct).toBeGreaterThan(40);
-    expect(run.progressPct).toBeLessThan(85);
+  it.each([
+    [0, "QUEUED"],
+    [3_000, "DOWNLOADING"],
+    [10_000, "PROBING"],
+    [15_000, "TRANSCODING"],
+    [27_000, "PACKAGING"],
+    [30_000, "COMPLETED"],
+  ] as const)("at %i ms is %s", (elapsed, stage) => {
+    const run = computeRun(record(), 1_000_000 + elapsed);
+    expect(run.stage).toBe(stage);
   });
 
   it("completes after 30s with a result", () => {

@@ -174,6 +174,7 @@ function deriveTitle(sourceUrl: string): string {
   }
 }
 
+/** Always a new record. Retry does not rewrite a FAILED run — it starts another. */
 export function startRun(jobId: string): RunRecord | null {
   const job = jobs.get(jobId);
   if (!job) return null;

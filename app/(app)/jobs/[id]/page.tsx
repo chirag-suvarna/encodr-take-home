@@ -111,6 +111,7 @@ function RunPanel({
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             {liveStage && <StatusBadge value={liveStage} />}
+            <span className="font-mono text-xs text-neutral-400">{runId}</span>
             {stream.connected && !stream.done && (
               <span className="text-xs text-neutral-400">live</span>
             )}
@@ -129,13 +130,14 @@ function RunPanel({
       {errorText && !encoding && (
         <div className="space-y-3 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
           <p>{errorText}</p>
+          <p className="text-xs text-red-600/80">This run failed. Retry starts a new run; the failed one is unchanged.</p>
           <button
             type="button"
             onClick={onRetry}
             disabled={starting}
             className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50"
           >
-            {starting ? "Retrying…" : "Retry"}
+            {starting ? "Starting new run…" : "Retry"}
           </button>
         </div>
       )}
