@@ -56,14 +56,19 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
         if (cancelled || !ev.data) return;
         const data = JSON.parse(ev.data) as RunEvent;
         const done = isTerminalStage(data.stage);
-        setState((s) => ({
-          stage: data.stage,
-          progressPct: data.progressPct,
-          log: s.log[s.log.length - 1] === data.message ? s.log : [...s.log, data.message],
-          error: data.error ?? null,
-          connected: true,
-          done,
-        }));
+        setState((s) => {
+          const last = s.log[s.log.length - 1];
+          const duplicate = last?.endsWith(data.message);
+          const time = new Date().toLocaleTimeString(undefined, { hour12: false });
+          return {
+            stage: data.stage,
+            progressPct: data.progressPct,
+            log: duplicate ? s.log : [...s.log, `${time} ${data.message}`],
+            error: data.error ?? null,
+            connected: true,
+            done,
+          };
+        });
         if (done && !settled) {
           settled = true;
           onTerminalRef.current?.();
