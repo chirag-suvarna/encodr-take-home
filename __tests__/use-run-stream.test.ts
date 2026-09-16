@@ -47,4 +47,23 @@ describe("useRunStream", () => {
       });
     }).not.toThrow();
   });
+
+  it("retries on a transport blip while mounted, but not after unmount", () => {
+    const signals: AbortSignal[] = [];
+    const onerrors: Array<(err: unknown) => unknown> = [];
+
+    fetchEventSource.mockImplementation((_url: string, init: { signal: AbortSignal; onerror: (err: unknown) => unknown }) => {
+      signals.push(init.signal);
+      onerrors.push(init.onerror);
+      return new Promise(() => undefined);
+    });
+
+    const { unmount } = renderHook(() => useRunStream("r1"));
+    expect(onerrors[0]?.(new Error("blip"))).toBe(1000);
+    expect(signals[0]?.aborted).toBe(false);
+
+    unmount();
+    expect(signals[0]?.aborted).toBe(true);
+    expect(() => onerrors[0]?.(new Error("blip"))).toThrow();
+  });
 });

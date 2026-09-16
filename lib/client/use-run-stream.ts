@@ -37,14 +37,15 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
     const ac = new AbortController();
     let cancelled = false;
     let settled = false;
+    const headers: Record<string, string> = {
+      authorization: `Bearer ${getAccessToken() ?? ""}`,
+      accept: "text/event-stream",
+    };
     setState({ ...initialState });
 
     void fetchEventSource(`/api/runs/${runId}/events`, {
       method: "GET",
-      headers: {
-        authorization: `Bearer ${getAccessToken() ?? ""}`,
-        accept: "text/event-stream",
-      },
+      headers,
       signal: ac.signal,
       openWhenHidden: true,
       async onopen(res) {
@@ -54,6 +55,7 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
       },
       onmessage(ev) {
         if (cancelled || !ev.data) return;
+        if (ev.id) headers["last-event-id"] = ev.id;
         const data = JSON.parse(ev.data) as RunEvent;
         const done = isTerminalStage(data.stage);
         setState((s) => {
@@ -71,15 +73,19 @@ export function useRunStream(runId: string | null, onTerminal?: () => void): Run
         });
         if (done && !settled) {
           settled = true;
+          cancelled = true;
           onTerminalRef.current?.();
           ac.abort();
         }
       },
       onerror(err) {
-        throw err;
+        // Unmount / terminal abort is intentional — do not reconnect (leaks).
+        if (cancelled || ac.signal.aborted) throw err;
+        setState((s) => ({ ...s, connected: false }));
+        return 1000;
       },
     }).catch(() => {
-      /* aborted or failed open — don't retry */
+      /* aborted, terminal, or fatal open */
     });
 
     return () => {

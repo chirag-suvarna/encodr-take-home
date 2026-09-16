@@ -4,6 +4,12 @@ import { getRun, getRunRecord, toRunEvent } from "@/lib/server/store";
 
 export const dynamic = "force-dynamic";
 
+function resumeSeq(req: Request): number {
+  const raw = req.headers.get("last-event-id");
+  const n = raw ? Number.parseInt(raw, 10) : 0;
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+}
+
 export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }) {
   return withAuth(req, async () => {
     const { id } = await ctx.params;
@@ -13,6 +19,7 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
     let timer: ReturnType<typeof setInterval> | undefined;
     let last = "";
     let stopped = false;
+    let seq = resumeSeq(req);
 
     const stream = new ReadableStream<Uint8Array>({
       start(controller) {
@@ -30,7 +37,12 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           }
         };
 
-        const tick = () => {
+        const enqueue = (payload: string) => {
+          seq += 1;
+          controller.enqueue(encoder.encode(`id: ${seq}\ndata: ${payload}\n\n`));
+        };
+
+        const tick = (force: boolean) => {
           if (stopped) return;
           const run = getRun(id);
           if (!run) {
@@ -38,10 +50,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
             return;
           }
           const payload = JSON.stringify(toRunEvent(run));
-          if (payload !== last) {
+          if (force || payload !== last) {
             last = payload;
             try {
-              controller.enqueue(encoder.encode(`data: ${payload}\n\n`));
+              enqueue(payload);
             } catch {
               stop();
               return;
@@ -50,8 +62,10 @@ export async function GET(req: Request, ctx: { params: Promise<{ id: string }> }
           if (isTerminalStage(run.stage)) stop();
         };
 
-        tick();
-        if (!stopped) timer = setInterval(tick, 250);
+        // Always emit the current snapshot first so a Last-Event-ID reconnect resumes
+        // from computeRun(now), not a stored event log.
+        tick(true);
+        if (!stopped) timer = setInterval(() => tick(false), 250);
         req.signal.addEventListener("abort", stop, { once: true });
       },
       cancel() {

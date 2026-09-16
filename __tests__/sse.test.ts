@@ -65,6 +65,19 @@ describe("GET /api/runs/:id/events", () => {
     expect(events.at(-1)?.error).toMatch(/corrupt/i);
   });
 
+  it("tags events with ids and resumes from Last-Event-ID with the current snapshot", async () => {
+    const job = createJob({ sourceUrl: "https://cdn.example.com/videos/movie.mp4" });
+    const rec = startRun(job.id)!;
+    rec.startedAt = Date.now() - TOTAL_MS;
+
+    const res = await eventsReq(rec.id, {
+      headers: { ...authHeaders(), "last-event-id": "5" },
+    });
+    const text = await res.text();
+    expect(text).toMatch(/^id: 6$/m);
+    expect(text).toMatch(/"stage":"COMPLETED"/);
+  });
+
   it("stops the timer when the client aborts", async () => {
     const job = createJob({ sourceUrl: "https://cdn.example.com/videos/movie.mp4" });
     const rec = startRun(job.id)!;

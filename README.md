@@ -86,6 +86,11 @@ Authorization: Bearer <accessToken>
 The route is wrapped in `withAuth`. `useRunStream` aborts on unmount / `runId` change so the server
 `setInterval` is cleared (`req.signal` + stream `cancel`).
 
+**Reconnect / resume (stretch):** each SSE frame has an `id`. A network blip retries after 1s and
+sends `Last-Event-ID`; the server immediately emits the **current** `computeRun(now)` snapshot (state
+is time-derived, not a replay log). Unmount and terminal COMPLETED/FAILED set `cancelled` and abort —
+those do **not** reconnect.
+
 **Not used as the primary path**
 
 - **Query token** — leaks via logs, proxies, and history.
