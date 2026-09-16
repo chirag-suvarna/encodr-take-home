@@ -54,7 +54,7 @@ export function MediaPreview({
   return (
     <div
       tabIndex={0}
-      className={`group relative overflow-hidden border border-white/10 bg-[#0e0e12] ${
+      className={`group relative overflow-hidden border border-[var(--line)] bg-[var(--bg-elevated)] ${
         compact ? "h-[78px] w-[132px] rounded-xl" : "aspect-video w-full rounded-2xl"
       }`}
       onMouseEnter={() => void handleEnter()}

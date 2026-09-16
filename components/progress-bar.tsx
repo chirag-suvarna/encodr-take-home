@@ -5,7 +5,7 @@ export function ProgressBar({ value, failed }: { value: number; failed?: boolean
 
   return (
     <div
-      className="relative h-2.5 w-full overflow-hidden rounded-full border border-white/8 bg-white/6 shadow-[inset_0_1px_2px_rgba(0,0,0,.4)]"
+      className="relative h-2.5 w-full overflow-hidden rounded-full border border-[var(--line)] bg-[var(--fill)]"
       role="progressbar"
       aria-valuemin={0}
       aria-valuemax={100}
@@ -16,7 +16,7 @@ export function ProgressBar({ value, failed }: { value: number; failed?: boolean
           "relative h-full overflow-hidden rounded-full transition-[width] duration-500 ease-out",
           failed
             ? "bg-[linear-gradient(90deg,#fb7185,#ef4444)]"
-            : "bg-[linear-gradient(90deg,#695dff,#7c6cff_55%,#36d7ff)]",
+            : "bg-[linear-gradient(90deg,var(--accent),var(--accent-2))]",
         )}
         style={{ width: `${pct}%` }}
       >

@@ -4,7 +4,7 @@ export function Brand({ href = "/jobs", compact = false }: { href?: string; comp
   return (
     <Link href={href} className="group inline-flex items-center gap-2.5" aria-label="Encodr home">
       <BrandMark />
-      <span className={compact ? "sr-only" : "text-[15px] font-semibold tracking-[-0.02em] text-white"}>
+      <span className={compact ? "sr-only" : "text-[15px] font-semibold tracking-[-0.02em] text-[var(--ink)]"}>
         Encodr
       </span>
     </Link>

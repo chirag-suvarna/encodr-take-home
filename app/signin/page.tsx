@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { BrandMark } from "@/components/brand";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { loginSchema, type LoginInput } from "@/lib/schemas";
 import { useAuth } from "@/lib/client/auth-context";
 
@@ -40,23 +41,24 @@ export default function SignInPage() {
 
   return (
     <main className="app-shell min-h-screen">
-      <span className="ambient-orb orb-a" aria-hidden="true" />
-      <span className="ambient-orb orb-b" aria-hidden="true" />
+      <div className="absolute right-4 top-4 z-10 sm:right-6 sm:top-6">
+        <ThemeToggle />
+      </div>
 
       <div className="mx-auto grid min-h-screen max-w-6xl items-center gap-12 px-5 py-12 lg:grid-cols-[1.05fr_.95fr] lg:px-8">
         <section className="hidden lg:block fade-up">
           <div className="mb-8 flex items-center gap-3">
             <BrandMark />
-            <span className="text-sm font-semibold tracking-tight text-white">Encodr</span>
+            <span className="text-sm font-semibold tracking-tight ink">Encodr</span>
           </div>
-          <p className="mb-4 inline-flex rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white/45">
+          <p className="mb-4 inline-flex rounded-full border border-[var(--line)] bg-[var(--fill)] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] faint">
             Media encoding workspace
           </p>
-          <h1 className="max-w-xl text-5xl font-semibold leading-[1.03] tracking-[-0.045em] text-white xl:text-6xl">
+          <h1 className="max-w-xl text-5xl font-semibold leading-[1.05] tracking-[-0.045em] ink xl:text-6xl">
             Encode once. <span className="gradient-text">Ship everywhere.</span>
           </h1>
-          <p className="mt-6 max-w-lg text-base leading-7 text-white/45">
-            A focused workspace for submitting media, watching live processing, and reviewing output renditions without losing the operational details.
+          <p className="mt-6 max-w-lg text-base leading-7 muted">
+            Submit a source, watch the pipeline live, and review renditions — without extra infrastructure.
           </p>
 
           <div className="mt-10 grid max-w-lg grid-cols-2 gap-3">
@@ -66,9 +68,9 @@ export default function SignInPage() {
               ["Fast", "Optimistic jobs"],
               ["Clear", "Output renditions"],
             ].map(([title, body], index) => (
-              <div key={title} className={`surface surface-hover rounded-2xl p-4 fade-up fade-up-delay-${Math.min(index + 1, 3)}`}>
-                <p className="text-xs font-semibold text-white">{title}</p>
-                <p className="mt-1 text-xs text-white/35">{body}</p>
+              <div key={title} className={`surface rounded-2xl p-4 fade-up fade-up-delay-${Math.min(index + 1, 3)}`}>
+                <p className="text-xs font-semibold ink">{title}</p>
+                <p className="mt-1 text-xs faint">{body}</p>
               </div>
             ))}
           </div>
@@ -78,41 +80,41 @@ export default function SignInPage() {
           <div className="mb-6 lg:hidden">
             <div className="flex items-center gap-3">
               <BrandMark />
-              <span className="text-base font-semibold tracking-tight text-white">Encodr</span>
+              <span className="text-base font-semibold tracking-tight ink">Encodr</span>
             </div>
           </div>
 
-          <div className="surface rounded-[28px] p-6 shadow-[0_40px_120px_rgba(0,0,0,.35)] sm:p-8">
+          <div className="surface rounded-[28px] p-6 sm:p-8">
             <div className="mb-8">
-              <span className="mb-4 inline-flex size-10 items-center justify-center rounded-2xl border border-violet-400/15 bg-violet-400/10 text-violet-200">
+              <span className="mb-4 inline-flex size-10 items-center justify-center rounded-2xl border border-indigo-400/20 bg-indigo-500/10 text-indigo-600 dark:text-indigo-200">
                 <svg viewBox="0 0 24 24" className="size-5" fill="none" aria-hidden="true">
                   <path d="M7 10V8a5 5 0 0 1 10 0v2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                   <rect x="5" y="10" width="14" height="10" rx="2.5" stroke="currentColor" strokeWidth="1.7" />
                   <path d="M12 14v2" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
                 </svg>
               </span>
-              <h2 className="text-2xl font-semibold tracking-[-0.025em] text-white">Welcome back</h2>
-              <p className="mt-2 text-sm leading-6 text-white/40">Sign in to manage your encode jobs and monitor active runs.</p>
+              <h2 className="text-2xl font-semibold tracking-[-0.025em] ink">Welcome back</h2>
+              <p className="mt-2 text-sm leading-6 muted">Sign in to manage encode jobs and monitor active runs.</p>
             </div>
 
             <form onSubmit={onSubmit} className="space-y-5" noValidate>
               <div>
-                <label htmlFor="email" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-white/55">
+                <label htmlFor="email" className="mb-2 block text-xs font-semibold muted">
                   Email
                 </label>
                 <input
                   id="email"
                   {...register("email")}
                   type="email"
-                  className="h-12 w-full rounded-2xl border border-white/10 bg-black/20 px-4 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,.03)] transition focus:border-violet-400/50 focus:bg-white/[.04]"
+                  className="input-field"
                   autoComplete="username"
                   spellCheck={false}
                 />
-                {errors.email && <p className="mt-2 text-xs text-rose-300">{errors.email.message}</p>}
+                {errors.email && <p className="mt-2 text-xs text-rose-600 dark:text-rose-300">{errors.email.message}</p>}
               </div>
 
               <div>
-                <label htmlFor="password" className="mb-2 block text-xs font-semibold uppercase tracking-[0.12em] text-white/55">
+                <label htmlFor="password" className="mb-2 block text-xs font-semibold muted">
                   Password
                 </label>
                 <div className="relative">
@@ -120,13 +122,13 @@ export default function SignInPage() {
                     id="password"
                     {...register("password")}
                     type={showPassword ? "text" : "password"}
-                    className="h-12 w-full rounded-2xl border border-white/10 bg-black/20 px-4 pr-12 text-sm text-white shadow-[inset_0_1px_0_rgba(255,255,255,.03)] transition focus:border-violet-400/50 focus:bg-white/[.04]"
+                    className="input-field pr-12"
                     autoComplete="current-password"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword((value) => !value)}
-                    className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-xl text-white/35 hover:bg-white/5 hover:text-white/70"
+                    className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-xl text-[var(--faint)] hover:bg-[var(--fill)] hover:text-[var(--ink)]"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     <svg viewBox="0 0 24 24" className="size-4" fill="none" aria-hidden="true">
@@ -144,11 +146,11 @@ export default function SignInPage() {
                     </svg>
                   </button>
                 </div>
-                {errors.password && <p className="mt-2 text-xs text-rose-300">{errors.password.message}</p>}
+                {errors.password && <p className="mt-2 text-xs text-rose-600 dark:text-rose-300">{errors.password.message}</p>}
               </div>
 
               {formError && (
-                <div className="rounded-2xl border border-rose-400/15 bg-rose-400/8 px-4 py-3 text-sm text-rose-200" role="alert">
+                <div className="rounded-2xl border border-rose-400/25 bg-rose-500/10 px-4 py-3 text-sm text-rose-700 dark:text-rose-200" role="alert">
                   {formError}
                 </div>
               )}
@@ -156,7 +158,7 @@ export default function SignInPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group relative h-12 w-full overflow-hidden rounded-2xl bg-[linear-gradient(100deg,#6656ff,#7b67ff_50%,#31cfff)] text-sm font-semibold text-white shadow-[0_12px_32px_rgba(103,89,255,.26)] hover:shadow-[0_16px_42px_rgba(103,89,255,.34)] disabled:cursor-not-allowed disabled:opacity-60"
+                className="btn-primary h-12 w-full text-sm"
               >
                 <span className="relative z-10 inline-flex items-center gap-2">
                   {isSubmitting && <span className="size-4 animate-spin rounded-full border-2 border-white/30 border-t-white" />}
@@ -166,11 +168,11 @@ export default function SignInPage() {
               </button>
             </form>
 
-            <div className="mt-6 rounded-2xl border border-dashed border-white/10 bg-white/[.025] p-4">
+            <div className="mt-6 rounded-2xl border border-dashed border-[var(--line)] bg-[var(--fill)] p-4">
               <div className="flex items-start justify-between gap-4">
                 <div>
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-white/35">Demo workspace</p>
-                  <p className="mt-1 text-xs text-white/55">Use the provided account to review the flow.</p>
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.12em] faint">Demo workspace</p>
+                  <p className="mt-1 text-xs muted">Use the provided account to review the flow.</p>
                 </div>
                 <button
                   type="button"
@@ -178,7 +180,7 @@ export default function SignInPage() {
                     setValue("email", "demo@encodr.dev");
                     setValue("password", "password123");
                   }}
-                  className="shrink-0 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-[10px] font-semibold text-white/65 hover:bg-white/8 hover:text-white"
+                  className="btn-ghost shrink-0"
                 >
                   Fill demo
                 </button>
@@ -186,7 +188,7 @@ export default function SignInPage() {
             </div>
           </div>
 
-          <p className="mt-5 text-center text-[11px] text-white/25">Secure session · short-lived access token · silent refresh</p>
+          <p className="mt-5 text-center text-[11px] faint">Secure session · short-lived access token · silent refresh</p>
         </section>
       </div>
     </main>
