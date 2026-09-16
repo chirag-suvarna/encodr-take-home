@@ -99,13 +99,20 @@ it with the server `Job` on success, rolls the cache back on error, then still i
 
 **Playwright (stretch):** `npm run test:e2e` covers the reviewer happy path and the corrupt-URL retry.
 
-**Not used as the primary path**
+## UI / UX
 
-- **Query token** — leaks via logs, proxies, and history.
-- **Cookies** — would be a second auth mechanism on top of memory + `localStorage`, plus CSRF.
+The interface keeps the take-home's existing architecture and interaction model but adds a product-style
+visual layer: a dark glass surface system, responsive spacing, gradient accent states, animated loading
+skeletons, reduced-motion support, clearer focus states, status dots, animated progress, pipeline stages,
+and compact job statistics.
 
-The server still accepts `?access_token=` so `curl` can subscribe. The browser app never puts the
-token in the URL.
+Jobs expose local source metadata (host, filename, format) and a lazy remote video preview. The preview
+uses `preload="none"` and only starts muted playback on hover/focus, with a graceful fallback if a remote
+source cannot be previewed. The detail view adds a larger preview, copy/open source actions, a pipeline
+stepper, richer live-log treatment, terminal-state messaging, and responsive rendition results.
+
+The app also ships a dedicated Encodr mark/favicon and richer page metadata for browser tabs and link
+previews. No additional UI/runtime dependency was introduced for these changes.
 
 ## Refresh / retry
 
