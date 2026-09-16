@@ -91,8 +91,10 @@ describe("useRunStream", () => {
     });
 
     const { unmount } = renderHook(() => useRunStream("r1"));
-    expect(onerrors[0]?.(new Error("blip"))).toBe(1000);
-    expect(onerrors[0]?.(new Error("blip"))).toBe(2000);
+    act(() => {
+      expect(onerrors[0]?.(new Error("blip"))).toBe(1000);
+      expect(onerrors[0]?.(new Error("blip"))).toBe(2000);
+    });
     expect(signals[0]?.aborted).toBe(false);
 
     unmount();
@@ -108,9 +110,11 @@ describe("useRunStream", () => {
     });
 
     const { result } = renderHook(() => useRunStream("r1"));
-    for (let i = 0; i < MAX_RECONNECT_ATTEMPTS; i++) {
-      expect(onerror?.(new Error("blip"))).toEqual(expect.any(Number));
-    }
+    act(() => {
+      for (let i = 0; i < MAX_RECONNECT_ATTEMPTS; i++) {
+        expect(onerror?.(new Error("blip"))).toEqual(expect.any(Number));
+      }
+    });
     act(() => {
       expect(() => onerror?.(new Error("blip"))).toThrow();
     });

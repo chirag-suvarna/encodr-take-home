@@ -86,6 +86,6 @@ describe("GET /api/runs/:id/events", () => {
     expect(res.status).toBe(200);
     const reader = res.body!.getReader();
     ac.abort();
-    await reader.closed.catch(() => undefined);
+    await reader.cancel().catch(() => undefined);
   });
 });

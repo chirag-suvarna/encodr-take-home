@@ -1,157 +1,33 @@
 # Encodr — Fullstack Take-Home
 
-A media transcoding dashboard: sign in, create an encode **job** from a URL, start a **run**, watch
-**live SSE progress**, and see **renditions** (or a clear failure + retry).
-
-The assignment brief is in [`BRIEF.md`](./BRIEF.md).
-
-## How to run
-
-Requires **Node 20.19+** or **22.12+** (Vitest 4). Node 20 is specified in `.nvmrc`.
-
 ```bash
-npm install
-npm run dev        # http://localhost:3000
+npm install && npm run dev    # http://localhost:3000
+npm run typecheck
+npm run test:run
+npm run test:e2e              # npx playwright install chromium first
 ```
 
-## How to test
+**Login:** `demo@encodr.dev` / `password123`  
+**Fail URL:** `https://cdn.example.com/videos/corrupt.mp4`
 
-```bash
-npm run typecheck  # tsc --noEmit
-npm run test:run   # Vitest + Testing Library
-npx playwright install chromium
-npm run test:e2e   # Playwright happy path + fail/retry
-npm run build      # production build
-```
+See [`BRIEF.md`](./BRIEF.md) for the assignment.
 
-Unit tests live in `__tests__/`. They cover login/tokens, job CRUD + URL validation, `computeRun`
-stages and the fail URL, run APIs, SSE terminal/cleanup, silent refresh, and the create-job form (RTL).
-E2E specs in `e2e/` walk the reviewer journey (complete encode + corrupt URL retry).
+## Implementation
 
-## Demo credentials
+Filled the scaffold `TODO(candidate)` work so the encode flow runs end to end.
 
-| | |
-|---|---|
-| Email | `demo@encodr.dev` |
-| Password | `password123` |
+- **Auth** — HMAC access (~60s) + refresh (7d); `POST /api/auth/login` and `/refresh`; jobs/runs return 401 without a token.
+- **Client auth** — `login()` stores tokens + user; `apiFetch` on 401 does one silent refresh and retries once; concurrent 401s share one refresh; failed refresh logs out to `/signin`.
+- **Jobs API** — `GET/POST /api/jobs`, `GET /api/jobs/:id`; Zod `http(s)` URL on client and server; 422 `fieldErrors` map onto the form.
+- **Runs** — `POST /api/runs`, `GET /api/runs/:id`; `computeRun(record, now)` walks QUEUED → … → COMPLETED in ~30s; corrupt URL fails after PROBING.
+- **SSE** — `GET /api/runs/:id/events`; Bearer via `@microsoft/fetch-event-source`; abort on unmount; terminal COMPLETED/FAILED closes the stream.
+- **UI** — jobs list + create form; job detail with Start encode, live stage/%, log, results, FAILED + Retry (new run, same job).
+- **Tests** — Vitest/RTL for auth, jobs, `computeRun`, SSE, refresh, form mapping.
 
-Fail path (always dies after PROBING):  
-`https://cdn.example.com/videos/corrupt.mp4`
+## Changes (beyond the core)
 
-Happy path: any other `https://…/…` URL, e.g. `https://cdn.example.com/videos/movie.mp4`.
-
-## Architecture
-
-One **Next.js App Router** app is the UI and the API (BFF). No extra backend, no database.
-
-```
-Browser
-  AuthContext + localStorage tokens
-  React Query + RHF/Zod
-  useRunStream (fetch-event-source + Bearer)
-        │
-        ▼
-Route Handlers  app/api/**
-  withAuth → HMAC access token
-  store.ts  (jobs/runs Maps on globalThis)
-  computeRun(record, now)  ← pure, elapsed time only
-```
-
-- **Job** = source URL + title + status derived from the latest run.
-- **Run** = time-based state machine (~30s):  
-  `QUEUED → DOWNLOADING → PROBING → TRANSCODING → PACKAGING → COMPLETED`  
-  Fail URL: `QUEUED → DOWNLOADING → PROBING → FAILED` at 12s.
-- Retry **starts a new run**. The failed run is not rewritten.
-- Maps sit on `globalThis` so Next route bundles share one in-memory store.
-
-## Authentication design
-
-HMAC-signed compact tokens (`body.sig`) in `lib/server/auth.ts`. No JWT library.
-
-| Token | TTL | Use |
-|---|---|---|
-| Access | **~60s** | `Authorization: Bearer` on `/api/jobs*` and `/api/runs*` |
-| Refresh | 7 days | `POST /api/auth/refresh` → new access token |
-
-Access cannot be used as refresh (`typ` is checked). Missing/invalid auth → **401**.  
-`POST /api/auth/login` returns `{ accessToken, refreshToken, user }`. One hard-coded demo user.
-
-## SSE authentication
-
-Native `EventSource` cannot set `Authorization`. The client uses `@microsoft/fetch-event-source`
-(already in the scaffold) with the **same Bearer header** as every other call:
-
-```
-GET /api/runs/:id/events
-Authorization: Bearer <accessToken>
-```
-
-The route is wrapped in `withAuth`. `useRunStream` aborts on unmount / `runId` change so the server
-`setInterval` is cleared (`req.signal` + stream `cancel`).
-
-**Reconnect / resume (stretch):** each SSE frame has an `id`. A network blip retries with exponential
-backoff (max 5 attempts) and `Last-Event-ID`; the server emits the current `computeRun(now)` snapshot.
-`COMPLETED` / `FAILED` (encoder) and SSE 404 (run gone) **stop**. Unmount aborts. Transport
-**Reconnect** is the same run; encode **Retry** creates a new run — they are not mixed.
-
-**Optimistic create (stretch):** `useCreateJob` inserts a temp `optimistic-*` row immediately, replaces
-it with the server `Job` on success, rolls the cache back on error, then still invalidates the list.
-
-**Playwright (stretch):** `npm run test:e2e` covers the reviewer happy path and the corrupt-URL retry.
-
-## UI / UX
-
-The interface keeps the take-home's existing architecture and interaction model but adds a product-style
-visual layer: a dark glass surface system, responsive spacing, gradient accent states, animated loading
-skeletons, reduced-motion support, clearer focus states, status dots, animated progress, pipeline stages,
-and compact job statistics.
-
-Jobs expose local source metadata (host, filename, format) and a lazy remote video preview. The preview
-uses `preload="none"` and only starts muted playback on hover/focus, with a graceful fallback if a remote
-source cannot be previewed. The detail view adds a larger preview, copy/open source actions, a pipeline
-stepper, richer live-log treatment, terminal-state messaging, and responsive rendition results.
-
-The app also ships a dedicated Encodr mark/favicon and richer page metadata for browser tabs and link
-previews. No additional UI/runtime dependency was introduced for these changes.
-
-## Refresh / retry
-
-Access TTL is short on purpose so this path is exercised.
-
-```
-request → 401?
-  no  → done
-  yes → POST /api/auth/refresh  (one shared in-flight promise)
-          → success: retry the original request **once**
-          → failure: clear tokens, dispatch `encodr:logout` → /signin
-```
-
-Login/refresh 401s do not recurse. Concurrent 401s share **one** refresh, then each caller retries
-with the new access token.
-
-## Assumptions
-
-- Encode is **simulated** (`elapsed = now - startedAt`). There is no real ffmpeg/worker.
-- Process-local memory is enough; restarting `next dev` wipes jobs/runs.
-- One demo user is enough; no sign-up, roles, or multi-tenant isolation.
-- A job has many runs over time; the list/detail UI shows the **latest** run.
-- Source URLs must be `http(s)` with a path; file extensions are not required (signed URLs often omit them).
-
-## Trade-offs
-
-| Choice | Why | Cost |
-|---|---|---|
-| In-memory `Map` | Matches the brief; easy to test | Lost on restart; not multi-instance |
-| `globalThis` store | Next can evaluate the module per route | Slightly unusual; documented |
-| HMAC tokens, no `jose` | Small, no extra dep | Not a standards JWT |
-| Bearer SSE via fetch-event-source | One auth story, abortable | Not the native EventSource API |
-| Shared refresh promise | Avoids a stampede | Slightly more client code |
-| Pure `computeRun(now)` | Deterministic tests, no timers in the state machine | SSE polls every 250ms instead of pushing from a worker |
-
-## What I’d do with more time
-
-- Persist jobs/runs (SQLite or similar) and survive restarts.
-- Rotate/revoke refresh tokens; encrypt `localStorage` or move to httpOnly cookies with CSRF.
-- Re-auth the SSE stream if the 60s access token expires mid-run (~30s today, so it usually fits).
-- Paginate the job list; keep a short run history on the detail page (run 1 FAILED, run 2 COMPLETED).
-- Swap the simulator for a real transcode worker behind the same `EncodeRun` contract.
+- SSE reconnect/resume: event `id`, `Last-Event-ID`, current `computeRun` snapshot, backoff (max 5). Reconnect = same run. Encode Retry = new run, same job.
+- Optimistic job create with cache rollback, then invalidate.
+- Playwright happy-path and fail/retry E2E.
+- Light/dark theme (toggle, `localStorage`, system preference). No API changes.
+- Vitest 3 (scaffold Vitest 4 does not start on Node 22.11).
